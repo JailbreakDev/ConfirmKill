@@ -1,0 +1,9 @@
+Package: com.sharedRoutine.confirmkill
+Name: ConfirmKill
+Depends: mobilesubstrate
+Version: 1.0
+Architecture: iphoneos-arm
+Description: Add Removal Confirmation for selected Apps 
+Maintainer: sharedRoutine
+Author: sharedRoutine
+Section: Tweaks
