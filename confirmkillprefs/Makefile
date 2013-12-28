@@ -1,4 +1,4 @@
-include theos/makefiles/common.mk
+include ../theos/makefiles/common.mk
 
 BUNDLE_NAME = ConfirmKillPrefs
 ConfirmKillPrefs_FILES = ConfirmKillPrefs.mm
