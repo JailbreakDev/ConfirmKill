@@ -1,10 +1,11 @@
-TARGET = :clang:7.0
-ARCHS = armv7
+THEOS_DEVICE_IP = iPad
+TARGET := iphone:clang:8.1
+export ARCHS = armv7 arm64
 
 include theos/makefiles/common.mk
 
 TWEAK_NAME = ConfirmKill
-ConfirmKill_FILES = Tweak.x SRConfirmKillAlertItem.x
+ConfirmKill_FILES = Tweak.x BUIAlertView.m
 ConfirmKill_FRAMEWORKS = UIKit CoreGraphics
 ConfirmKill_CFLAGS ?= -fobjc-arc
 include $(THEOS_MAKE_PATH)/tweak.mk

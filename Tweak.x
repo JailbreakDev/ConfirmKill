@@ -1,69 +1,82 @@
-#import <SpringBoard/SBAlertItemsController.h>
-#import <SpringBoard/SBAppSliderController.h>
-#import "SRConfirmKillAlertItem.h"
+#import "Headers.h"
+#import "BUIAlertView.h"
 
-#define PREFS_PATH @"/var/mobile/Library/Preferences/com.sharedRoutine.confirmkill.plist"
-
-@class SBAppSliderScrollingViewController;
-
-BOOL original;
-NSArray *confirmIDs;
-NSDictionary *prefDict;
+static NSArray *confirmIDs;
 
 static void settingsChanged(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
 
-prefDict = [NSDictionary dictionaryWithContentsOfFile:PREFS_PATH] ?: [NSDictionary dictionary];
-confirmIDs = [prefDict objectForKey:@"ConfirmIDs"] ?: [NSArray array];
+CFPreferencesAppSynchronize(CFSTR("com.sharedRoutine.confirmkill"));
+confirmIDs = nil;
+confirmIDs = (__bridge_transfer NSArray *)CFPreferencesCopyAppValue(CFSTR("ConfirmIDs"),CFSTR("com.sharedRoutine.confirmkill"));
 
 }
 
+%group iOS8Hooks
+%hook SBAppSwitcherController
+-(void)switcherScroller:(id)arg1 displayItemWantsToBeRemoved:(SBDisplayItem *)item {
+	void (^resetScrollViews)() = ^{
+		for (UIScrollView *scrollView in ((UIScrollView *)[[self pageController] valueForKey:@"_scrollView"]).subviews) {
+			if ([scrollView isKindOfClass:UIScrollView.class]) {
+				scrollView.contentOffset = CGPointZero;
+			}
+		}
+	};
+
+	if ([confirmIDs containsObject:item.displayIdentifier]) {
+		BUIAlertView *av = [[BUIAlertView alloc] initWithTitle:@"Confirm Removal" message:@"Are you sure you want to close this App?" delegate:nil cancelButtonTitle:@"No" otherButtonTitles:@"Yes!", nil];
+			[av showWithDismissBlock:^(UIAlertView *alertView, NSInteger buttonIndex, NSString *buttonTitle) {
+	  		if ([buttonTitle isEqualToString:@"Yes!"]) {
+	    		%orig;
+	  		} else {
+	  			[UIView animateWithDuration:0.3f animations:resetScrollViews];
+	  		}
+		}];
+	} else {
+		%orig;
+	}
+}
+
+%end
+%end
+
+%group iOS7Hooks
 %hook SBAppSliderController
 
 - (void)sliderScroller:(SBAppSliderScrollingViewController *)scroller itemWantsToBeRemoved:(NSUInteger)index {
 
-    //SpringBoard
-	if (index == 0) {
-
-		%orig;
-		return;
-	}
-
-    //Call original method instead of hook
-	if (original) {
-
-	 %orig;
-	 [self setIsOriginal:FALSE];
-	 return;
-
-    }
+	void (^resetScrollViews)() = ^{
+		for (UIScrollView *scrollView in self.contentScrollView.subviews) {
+			if ([scrollView isKindOfClass:UIScrollView.class]) {
+				scrollView.contentOffset = CGPointZero;
+			}
+		}
+	};
 
     if ([confirmIDs containsObject:[self _displayIDAtIndex:index]]) {
-	 
-        SRConfirmKillAlertItem *alert = [[%c(SRConfirmKillAlertItem) alloc] initWithController:self index:index];
-        [(SBAlertItemsController *)[%c(SBAlertItemsController) sharedInstance] activateAlertItem:alert];
-       
+    	BUIAlertView *av = [[BUIAlertView alloc] initWithTitle:@"Confirm Removal" message:@"Are you sure you want to close this App?" delegate:nil cancelButtonTitle:@"No" otherButtonTitles:@"Yes!", nil];
+			[av showWithDismissBlock:^(UIAlertView *alertView, NSInteger buttonIndex, NSString *buttonTitle) {
+	  		if ([buttonTitle isEqualToString:@"Yes!"]) {
+	    		%orig;
+	  		} else {
+	  			[UIView animateWithDuration:0.3f animations:resetScrollViews];
+	  		}
+		}];
     } else {
-
-        %orig;
-
+    	%orig;
     }
 }
 
-%new 
-
--(void)setIsOriginal:(BOOL)isOrig {
-
-    original = isOrig;
-
-}
-
+%end
 %end
 
 %ctor {
 
-CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),NULL,settingsChanged,CFSTR("com.sharedRoutine.confirmkill.settingschanged"),NULL,CFNotificationSuspensionBehaviorDeliverImmediately);
+	if (iOS8) {
+		%init(iOS8Hooks);
+	} else if (iOS7) {
+		%init(iOS7Hooks);
+	}
 
-prefDict = [NSDictionary dictionaryWithContentsOfFile:PREFS_PATH] ?: [NSDictionary dictionary];
-confirmIDs = [prefDict objectForKey:@"ConfirmIDs"] ?: [NSArray array];
+	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),NULL,settingsChanged,CFSTR("com.sharedRoutine.confirmkill.settingschanged"),NULL,CFNotificationSuspensionBehaviorDeliverImmediately);
 
 }

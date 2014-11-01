@@ -1,18 +1,13 @@
-#import <Preferences/Preferences.h>
 #import <libapplist/AppList.h>
 #import <objc/runtime.h>
 
-/*
- Thanks to JW97. Used part of his Code as an example to make an Applist Pref Entry
- */
-
-#define PREFS_PATH @"/var/mobile/Library/Preferences/com.sharedRoutine.confirmkill.plist"
+@interface PSViewController : UIViewController
+- (id)initForContentSize:(CGSize)size;
+@end
 
 @interface SRConfirmKillPrefsController : PSViewController <UITableViewDelegate> {
     
     UITableView *_tableView;
-    NSString *_prefsKey;
-    NSMutableDictionary *_prefsDict;
     ALApplicationTableDataSource *_dataSource;
     
 }
@@ -52,14 +47,10 @@
 
 		BOOL isOS7 = (objc_getClass("UIAttachmentBehavior") != nil);
 		if (isOS7) _tableView.contentInset = UIEdgeInsetsMake(64.0f, 0.0f, 0.0f, 0.0f);
-	
-		_prefsKey = @"ConfirmIDs";
-		_prefsDict = [[NSMutableDictionary alloc] initWithContentsOfFile:PREFS_PATH] ?: [[NSMutableDictionary alloc] init];
 
 		_dataSource = [[SRConfirmKillAppsDataSource alloc] initWithController:self];
 		NSNumber *iconSize = [NSNumber numberWithUnsignedInteger:ALApplicationIconSizeSmall];
-		NSArray *sectionDescriptors = [NSArray arrayWithObjects: [NSDictionary dictionaryWithObjectsAndKeys:@"Available Apps", ALSectionDescriptorTitleKey, 
-@"ALCheckCell", ALSectionDescriptorCellClassNameKey, iconSize, ALSectionDescriptorIconSizeKey, (id)kCFBooleanTrue, ALSectionDescriptorSuppressHiddenAppsKey,
+		NSArray *sectionDescriptors = [NSArray arrayWithObjects: [NSDictionary dictionaryWithObjectsAndKeys:@"Available Apps", ALSectionDescriptorTitleKey, @"ALCheckCell", ALSectionDescriptorCellClassNameKey, iconSize, ALSectionDescriptorIconSizeKey, (id)kCFBooleanTrue, ALSectionDescriptorSuppressHiddenAppsKey,
 								  nil], nil];
 		_dataSource.sectionDescriptors = sectionDescriptors;
 
@@ -106,19 +97,20 @@
 - (void)cellAtIndexPath:(NSIndexPath *)indexPath didChangeToValue:(id)newValue
 {
     NSString *identifier = [_dataSource displayIdentifierForIndexPath:indexPath];
-    NSMutableArray *filteredApps = [_prefsDict objectForKey:_prefsKey] ?: [NSMutableArray array];
+    NSMutableArray *filteredApps = [(__bridge_transfer NSArray *)CFPreferencesCopyAppValue(CFSTR("ConfirmIDs"),CFSTR("com.sharedRoutine.confirmkill")) mutableCopy]?: [NSMutableArray array];
     
     if ([newValue boolValue]) [filteredApps addObject:identifier];
     else if(![newValue boolValue]) [filteredApps removeObject:identifier];
-    [_prefsDict setObject:filteredApps forKey:_prefsKey];
-    [_prefsDict writeToFile:PREFS_PATH atomically:YES];
+
+    CFPreferencesSetAppValue(CFSTR("ConfirmIDs"),(__bridge CFArrayRef)filteredApps,CFSTR("com.sharedRoutine.confirmkill"));
+    CFPreferencesAppSynchronize(CFSTR("com.sharedRoutine.confirmkill"));
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.sharedRoutine.confirmkill.settingschanged"), NULL, NULL, YES);
 }
 
 - (id)valueForCellAtIndexPath:(NSIndexPath *)indexPath
 {
     NSString *identifier = [_dataSource displayIdentifierForIndexPath:indexPath];
-    NSArray *array = [_prefsDict objectForKey:_prefsKey] ?: [NSMutableArray array];
+    NSArray *array = (__bridge_transfer NSArray *)CFPreferencesCopyAppValue(CFSTR("ConfirmIDs"),CFSTR("com.sharedRoutine.confirmkill")) ?: [NSArray array];
 
     return [NSNumber numberWithBool:[array containsObject:identifier]];
 }
@@ -137,11 +129,11 @@
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    id cell = [super tableView:tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:indexPath.row inSection:0]];
+    ALValueCell *cell = (ALValueCell *)[super tableView:tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:indexPath.row inSection:0]];
     if ([cell isKindOfClass:[ALValueCell class]])
     {
-	[cell setDelegate:self];
-	[cell loadValue:[_controller valueForCellAtIndexPath:indexPath]];
+		[cell setDelegate:self];
+		[cell loadValue:[_controller valueForCellAtIndexPath:indexPath]];
     }
     return cell;
 }
