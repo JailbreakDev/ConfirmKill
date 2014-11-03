@@ -1,3 +1,5 @@
+ARCHS = armv7 arm64
+
 include ../theos/makefiles/common.mk
 
 BUNDLE_NAME = ConfirmKillPrefs
@@ -6,7 +8,7 @@ ConfirmKillPrefs_INSTALL_PATH = /Library/PreferenceBundles
 ConfirmKillPrefs_FRAMEWORKS = UIKit
 ConfirmKillPrefs_PRIVATE_FRAMEWORKS = Preferences
 ConfirmKillPrefs_LIBRARIES = applist
-ConfirmKillPrefs_CFLAGS?= -fobjc-arc
+ConfirmKillPrefs_CFLAGS ?= -fobjc-arc
 
 include $(THEOS_MAKE_PATH)/bundle.mk
 

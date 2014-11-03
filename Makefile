@@ -1,6 +1,6 @@
 THEOS_DEVICE_IP = iPad
 TARGET := iphone:clang:8.1
-export ARCHS = armv7 arm64
+ARCHS = armv7 arm64
 
 include theos/makefiles/common.mk
 
